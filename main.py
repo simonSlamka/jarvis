@@ -1,5 +1,7 @@
 from openai import OpenAI
+import subprocess
 import base64
+import keyboard
 import os
 import sounddevice as sd
 import numpy as np
@@ -26,24 +28,30 @@ thread = client.beta.threads.create()
 
 fs = 44100
 
+key = "num lock"
+
 try:
     while True:
+        while not keyboard.is_pressed(key):
+            pass
 
-        print("Listening ...")
-        myrecording = sd.InputStream(samplerate=fs, channels=2)
-        myrecording.start()
-        recording = []
-        try:
-            while True:
-                data = myrecording.read(int(fs))
-                recording.append(data[0])
-        except KeyboardInterrupt:
-            print("Done listening!")
-        finally:
-            myrecording.stop()
-            myrecording.close()
-            recording = np.concatenate(recording, axis=0)
-            wav.write('output.wav', fs, recording)
+        if keyboard.is_pressed(key):
+            print("Listening ...")
+            myrecording = sd.InputStream(samplerate=fs, channels=2)
+            myrecording.start()
+            recording = []
+            try:
+                while keyboard.is_pressed(key):
+                    keyboard.block_key(key)
+                    data = myrecording.read(int(fs))
+                    recording.append(data[0])
+            finally:
+                print("Done listening!")
+                keyboard.unblock_key(key)
+                myrecording.stop()
+                myrecording.close()
+                recording = np.concatenate(recording, axis=0)
+                wav.write('output.wav', fs, recording)
 
         audio = open('output.wav', 'rb')
 
@@ -73,7 +81,6 @@ try:
                 run_id=run.id
             )
             print("Stand by ...")
-            time.sleep(2)
         msgs = client.beta.threads.messages.list(
             thread_id=thread.id
         )
@@ -95,6 +102,7 @@ try:
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy() == True:
             continue
+        # subprocess.run(["pw-play", "response.mp3"])
 
 except KeyboardInterrupt:
     print("Goodbye!")
